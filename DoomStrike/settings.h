@@ -31,12 +31,14 @@
 #define FILL_CAMERA_COLOR {0, 0, 0, 255}
 
 /*Ray cast settings*/
-#define MAX_DISTANCE 100
+#define MAX_DISTANCE 200
 
 /*Map settings*/
 #define SCALE 0.2
 
 /*Textures path*/
-#define WALL_TEXTURE "textures/wall.jpg"
+/*World textures*/
+#define SKY_TEXTURE "textures/world/sky.jpg"
+#define WALL_TEXTURE "textures/world/wall.jpg"
 
 #endif

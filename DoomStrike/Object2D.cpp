@@ -48,3 +48,22 @@ std::vector<Point2D>& Object2D::getVPoints()
 {
 	return v_points;
 }
+
+sf::Texture& Object2D::loadTexture(bool& b_textures)
+{
+	if (texture_loaded)
+	{
+		return T_texture;
+	}
+	else
+	{
+		texture_loaded = true;
+		if (!T_texture.loadFromFile(s_texture)) 
+		{
+			texture_loaded = false;
+			b_textures = false;
+		}
+		T_texture.setRepeated(true);
+		return T_texture;
+	}
+}

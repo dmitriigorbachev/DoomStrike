@@ -8,6 +8,8 @@
 struct SRayCast
 {
 	double d_distance;
+	int objectNum;
+	double texturePosition;
 };
 
 class Player
@@ -25,6 +27,13 @@ private:
 
 	double d_walkSpeed;
 	sf::Vector2i localMousePosition;
+
+	sf::Texture T_skyTexture;
+	sf::Texture T_groundTexture;
+
+	bool b_textures;
+	bool b_skyTexture;
+	bool b_groundTexxture;
 public:
 	Player();
 	Player(Point2D _position, double _direction, const int& _world_length, const int& _world_width, int _distancesSegments);
@@ -35,9 +44,10 @@ public:
 	bool PlayerControl(sf::RenderWindow& window, const std::vector<Object2D*>& v_objects);
 
 	void Draw(sf::RenderWindow& window);
-	void DrawPlayerView(sf::RenderWindow& window);
+	void DrawPlayerView(sf::RenderWindow& window, const std::vector<Object2D*>& v_objects);
 
 	void setWalkSpeed(double _walkSpeed);
+	void setBTextures(bool _b_textures);
 };
 
 #endif

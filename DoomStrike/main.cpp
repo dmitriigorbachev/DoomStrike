@@ -10,7 +10,7 @@ int SCREEN_HEIGHT = 720;
 int WORLD_LENGTH = 100;
 int WORLD_WIDTH = 100;
 
-int DISTANCES_SEGMENTS = 500;
+int DISTANCES_SEGMENTS = 1280;
 
 using namespace std;
 
@@ -51,6 +51,7 @@ int main()
 	Player player(ppoint, 0, WORLD_LENGTH, WORLD_WIDTH, DISTANCES_SEGMENTS);
 	player.setWalkSpeed(0.5);
 	world.AddPlayer(player);
+	player.setBTextures(true);
 
 	sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEN_HEIGHT), "DoomStrike");
 	window.setFramerateLimit(30);
@@ -79,8 +80,8 @@ int main()
 		
 		window.clear();
 		player.UpdateDistances(world.getObjects());
-		player.DrawPlayerView(window);
-		world.Draw(window);
+		player.DrawPlayerView(window, world.getObjects());
+		//world.Draw(window);
 		if (!player.PlayerControl(window, world.getObjects())) 
 		{
 		}

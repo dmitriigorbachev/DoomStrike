@@ -48,7 +48,10 @@ class Object2D
 protected:
 	std::vector<Point2D> v_points;
 	int v_pointsSize;
+	
+	sf::Texture T_texture;
 	std::string s_texture;
+	bool texture_loaded = false;
 public:
 	virtual bool isInArea(const int& world_length, const int& world_width);
 	virtual void Draw(sf::RenderWindow& window, const int& world_length, const int& world_width);
@@ -56,6 +59,8 @@ public:
 	int getVPointsSize() const;
 	Point2D getPoint(int i);
 	std::vector<Point2D>& getVPoints();
+
+	sf::Texture& loadTexture(bool& b_textures);
 };
 
 #endif

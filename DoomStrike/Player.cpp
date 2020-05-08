@@ -49,7 +49,7 @@ double SegmentLength(const Point2D& pointA, const Point2D& pointB)
 	return (std::sqrt(std::pow(pointA.x - pointB.x, 2) + std::pow(pointA.y - pointB.y, 2)));
 }
 
-bool areCrossing(std::pair<Point2D, Point2D>& segment1, std::pair<Point2D, Point2D>& segment2, double& distance)
+bool areCrossing(std::pair<Point2D, Point2D>& segment1, std::pair<Point2D, Point2D>& segment2, double& distance, double& texturePosition, double _world_length)
 {
 	Point2D cut1 = segment1.second - segment1.first;
 	Point2D cut2 = segment2.second - segment2.first;
@@ -72,28 +72,35 @@ bool areCrossing(std::pair<Point2D, Point2D>& segment1, std::pair<Point2D, Point
 
 	double x = (segment1.first.x + cut1.x * std::abs(prod1) / std::abs(prod2 - prod1));
 	double y = (segment1.first.y + cut1.y * std::abs(prod1) / std::abs(prod2 - prod1));
+
 	distance = std::sqrt(std::pow(segment1.first.x - x, 2) + std::pow(segment1.first.y - y, 2));
+	texturePosition = std::sqrt(std::pow(segment2.first.x - x, 2) + std::pow(segment2.first.y - y, 2));
 
 	return true;
 }
 
-double CrossingDistance(std::pair<Point2D, Point2D>& directionSegment, const std::vector<Object2D*>& v_objects)
+double CrossingDistance(std::pair<Point2D, Point2D>& directionSegment, const std::vector<Object2D*>& v_objects, int& objectNum, double& texturePosition, double _world_length)
 {
 	double distance = MAX_DISTANCE;
+	int index = 0;
 	for (auto object : v_objects)
 	{
 		for (int i = 0; i < object->getVPointsSize(); i++)
 		{
 			double tmpDistance;
+			double tmpTexturePosition;
 			std::pair<Point2D, Point2D> objectSegment = { object->getPoint(i), object->getPoint(i + 1) };
-			if (areCrossing(directionSegment, objectSegment, tmpDistance))
+			if (areCrossing(directionSegment, objectSegment, tmpDistance, tmpTexturePosition, _world_length))
 			{
 				if (tmpDistance < distance)
 				{
 					distance = tmpDistance;
+					objectNum = index;
+					texturePosition = tmpTexturePosition;
 				}
 			}
 		}
+		index++;
 	}
 	return distance;
 }
@@ -105,10 +112,12 @@ void Player::UpdateDistances(const std::vector<Object2D*>& v_objects)
 	double right = d_direction + d_fieldOfView / 2;
 	for (int i = 0; i < distancesSegments; i++)
 	{
+		int objectNum = -1;
+		double texturePosition = 0;
 		double direction = d_direction + ((double)i / distancesSegments - 0.5) * d_fieldOfView;
 		std::pair<Point2D, Point2D> directionSegment = { p_position, { p_position.x + (double)MAX_DISTANCE * cos(direction), p_position.y + (double)MAX_DISTANCE * sin(direction) } };
-		double distance = CrossingDistance(directionSegment, v_objects);
-		SRayCast ray = { distance };
+		double distance = CrossingDistance(directionSegment, v_objects, objectNum, texturePosition, world_length);
+		SRayCast ray = { distance, objectNum, texturePosition };
 		v_distances.push_back(ray);
 	}
 }
@@ -293,44 +302,85 @@ void Player::Draw(sf::RenderWindow& window)
 	window.draw(circle);
 }
 
-void Player::DrawPlayerView(sf::RenderWindow& window)
+void Player::DrawPlayerView(sf::RenderWindow& window, const std::vector<Object2D*>& v_objects)
 {
-	double direction = d_direction - d_fieldOfView / 2;
 
-	for (int i = 0; i < v_distances.size() - 1; i++)
+	if (b_textures)
 	{
-		sf::ConvexShape shape;
-		shape.setPointCount(4);
+		double direction = d_direction - d_fieldOfView / 2;
 
-		double heightLeftTop = (1 - 1 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
-		double heightLeftBottom = (1 + 1 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
-		double heightRightTop = (1 - 1 / (v_distances[i + 1].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
-		double heightRightBottom = (1 + 1 / (v_distances[i + 1].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
+		sf::Sprite sky;
+		if (!b_skyTexture)
+		{
+			T_skyTexture.setRepeated(true);
+			T_skyTexture.loadFromFile(SKY_TEXTURE);
+			b_skyTexture = true;
+		}
+		sky.setTexture(T_skyTexture);
+		sky.setTextureRect(sf::IntRect(d_direction * window.getSize().x / 2, 0, window.getSize().x, window.getSize().y / 2));
+		sky.setPosition(sf::Vector2f(0, 0));
+		window.draw(sky);
 
-		shape.setPoint(0, sf::Vector2f(0, heightLeftTop));
-		shape.setPoint(1, sf::Vector2f(0, heightLeftBottom));
-		shape.setPoint(2, sf::Vector2f((double)window.getSize().x / distancesSegments, heightRightBottom));
-		shape.setPoint(3, sf::Vector2f((double)window.getSize().x / distancesSegments, heightRightTop));
+		for (int i = 0; i < v_distances.size() - 1; i++)
+		{
+			double heightLeftTop = (1 - 5 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
+			double heightLeftBottom = (1 + 5 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
 
-		int alpha = 255 * (1 - v_distances[i].d_distance / MAX_DISTANCE);
-		if (alpha > 255)
-			alpha = 255;
-		if (alpha < 0)
-			alpha = 0;
+			double scaleFactor = (double)(heightLeftBottom - heightLeftTop) / window.getSize().y;
+			sf::Sprite sprite;
+			if (v_distances[i].objectNum >= 0)
+			{
+				sprite.setTexture(v_objects[v_distances[i].objectNum]->loadTexture(b_textures));
+			}
+			sprite.setTextureRect(sf::IntRect(v_distances[i].texturePosition * 150, 0, ceil(window.getSize().x / distancesSegments + 0.5), window.getSize().y));
+			sprite.setPosition(sf::Vector2f((double)i * window.getSize().x / distancesSegments, heightLeftTop));
+			sprite.scale(1, scaleFactor);
 
-		shape.setFillColor({ 255, 174, 174, static_cast<sf::Uint8>(alpha) });
-		shape.setOutlineThickness(0);
-		shape.setPosition((double)i * window.getSize().x / distancesSegments, 0);
+			window.draw(sprite);
+		}
+	}
+	else
+	{
+		double direction = d_direction - d_fieldOfView / 2;
 
-		//sf::Sprite sprite;
+		for (int i = 0; i < v_distances.size() - 1; i++)
+		{
+			sf::ConvexShape shape;
+			shape.setPointCount(4);
 
-		window.draw(shape);
+			double heightLeftTop = (1 - 1 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
+			double heightLeftBottom = (1 + 1 / (v_distances[i].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
+			double heightRightTop = (1 - 1 / (v_distances[i + 1].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
+			double heightRightBottom = (1 + 1 / (v_distances[i + 1].d_distance * cos(direction - d_direction))) * window.getSize().y / 2;
 
-		direction += d_fieldOfView / distancesSegments;
+			shape.setPoint(0, sf::Vector2f(0, heightLeftTop));
+			shape.setPoint(1, sf::Vector2f(0, heightLeftBottom));
+			shape.setPoint(2, sf::Vector2f((double)window.getSize().x / distancesSegments, heightRightBottom));
+			shape.setPoint(3, sf::Vector2f((double)window.getSize().x / distancesSegments, heightRightTop));
+
+			int alpha = 255 * (1 - v_distances[i].d_distance / MAX_DISTANCE);
+			if (alpha > 255)
+				alpha = 255;
+			if (alpha < 0)
+				alpha = 0;
+
+			shape.setFillColor({ 255, 174, 174, static_cast<sf::Uint8>(alpha) });
+			shape.setOutlineThickness(0);
+			shape.setPosition((double)i * window.getSize().x / distancesSegments, 0);
+
+			window.draw(shape);
+
+			direction += d_fieldOfView / distancesSegments;
+		}
 	}
 }
 
 void Player::setWalkSpeed(double _walkSpeed)
 {
 	d_walkSpeed = _walkSpeed;
+}
+
+void Player::setBTextures(bool _b_textures)
+{
+	b_textures = _b_textures;
 }

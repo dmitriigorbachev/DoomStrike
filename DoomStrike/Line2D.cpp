@@ -41,6 +41,7 @@ Line2D::Line2D(double _x1, double _y1, double _x2, double _y2)
 	v_points.push_back(point1);
 	v_points.push_back(point2);
 	v_pointsSize = 2;
+	s_texture = WALL_TEXTURE;
 }
 
 void Line2D::Draw(sf::RenderWindow& window, const int& world_length, const int& world_width)
